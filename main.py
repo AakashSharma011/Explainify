@@ -21,7 +21,8 @@ from langchain.schema import HumanMessage
 load_dotenv()
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 if not GROQ_API_KEY:
-    raise ValueError("GROQ_API_KEY missing in .env — add it before running")
+    import warnings
+    warnings.warn("GROQ_API_KEY not set — LLM features will fail until you set it in the environment.")
 
 app = FastAPI(title="Explainify", version="1.0")
 app.add_middleware(
@@ -44,13 +45,14 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 nlp = spacy.load("en_core_web_sm")
 
 # Groq — using llama-3.3-70b-versatile (fast, free tier available)
-print(f"DEBUG: Loaded GROQ API Key: {GROQ_API_KEY[:5]}...{GROQ_API_KEY[-5:]}")
-llm = ChatGroq(
-    model="llama-3.3-70b-versatile",
-    temperature=0.0,
-    max_retries=2,
-    api_key=GROQ_API_KEY
-)
+llm = None
+if GROQ_API_KEY:
+    llm = ChatGroq(
+        model="llama-3.3-70b-versatile",
+        temperature=0.0,
+        max_retries=2,
+        api_key=GROQ_API_KEY
+    )
 
 # ----------------- In-memory sessions -----------------
 # session_id -> {"text": str, "summary": str, "terms": List[dict], "chat": List}
@@ -74,6 +76,8 @@ def detect_complex_terms(text: str, max_terms: int = 30) -> List[str]:
     return merged[:max_terms]
 
 def summarize_text_with_llm(text: str, max_chars: int = 7000) -> str:
+    if not llm:
+        return "LLM unavailable — GROQ_API_KEY not configured."
     chunk = text[:max_chars]
     prompt = (
         "You are a helpful study assistant. Create a short structured summary (bullet points) "
@@ -84,6 +88,8 @@ def summarize_text_with_llm(text: str, max_chars: int = 7000) -> str:
     return getattr(resp, "content", str(resp)).strip()
 
 def explain_terms_with_llm(terms: List[str], limit: int = 12) -> List[Dict[str,str]]:
+    if not llm:
+        return [{"term": t, "explanation": "LLM unavailable — GROQ_API_KEY not configured."} for t in terms[:limit]]
     out = []
     for term in terms[:limit]:
         prompt = f"Explain the term '{term}' in 1-3 simple sentences for a college student. Keep it concise."
@@ -136,8 +142,11 @@ async def upload_and_ask(file: UploadFile = File(...), prompt: str = Form(...)):
         "You are an assistant using this document to answer questions.\n\n"
         f"Document excerpt:\n{context}\n\nUser question: {prompt}\n\nAnswer clearly and concisely."
     )
-    resp = llm.invoke([HumanMessage(content=user_prompt)])
-    first_answer = getattr(resp, "content", str(resp)).strip()
+    if not llm:
+        first_answer = "LLM unavailable — GROQ_API_KEY not configured on the server."
+    else:
+        resp = llm.invoke([HumanMessage(content=user_prompt)])
+        first_answer = getattr(resp, "content", str(resp)).strip()
 
     SESSIONS[sid]["chat"].append({"role":"user","content":prompt})
     SESSIONS[sid]["chat"].append({"role":"assistant","content":first_answer})
@@ -170,6 +179,8 @@ async def api_ask(body: AskRequest):
             f"User question: {question}"
         )
 
+    if not llm:
+        return JSONResponse({"error": "LLM unavailable — GROQ_API_KEY not configured on the server."}, status_code=503)
     resp = llm.invoke([HumanMessage(content=prompt_text)])
     answer = getattr(resp, "content", str(resp)).strip()
 

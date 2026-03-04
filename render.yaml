@@ -2,9 +2,12 @@ services:
   - type: web
     name: explainify
     runtime: python
+    pythonVersion: "3.10.12"
     buildCommand: "pip install -r requirements.txt && python -m spacy download en_core_web_sm"
     startCommand: "uvicorn main:app --host 0.0.0.0 --port $PORT"
     envVars:
       - key: GROQ_API_KEY
         sync: false   # value set manually in Render dashboard — never hardcoded
+      - key: PYTHON_VERSION
+        value: "3.10.12"
     plan: free
