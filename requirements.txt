@@ -2,7 +2,7 @@ fastapi
 python-multipart
 python-dotenv
 pymupdf
-langchain
+langchain-core
 langchain-groq
 groq
 pydantic

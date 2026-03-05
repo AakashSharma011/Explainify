@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 
 import fitz  # PyMuPDF
 from langchain_groq import ChatGroq
-from langchain.schema import HumanMessage
+from langchain_core.messages import HumanMessage
 
 # ----------------- Config & App -----------------
 load_dotenv()
