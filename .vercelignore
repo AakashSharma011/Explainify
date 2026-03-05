@@ -1,0 +1,11 @@
+venv/
+__pycache__/
+uploads/
+*.pyc
+.git/
+Procfile
+render.yaml
+nixpacks.toml
+runtime.txt
+.env
+main.py
