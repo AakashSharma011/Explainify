@@ -4,4 +4,5 @@ python-dotenv
 pymupdf
 langchain
 langchain-groq
+groq
 pydantic
